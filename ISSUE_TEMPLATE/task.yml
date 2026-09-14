@@ -1,0 +1,53 @@
+name: Task
+description: A unit of work an agent can take once Diego approves it.
+labels: ["continuity:proposed"]
+assignees: ["diegoavilac"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is wrong or missing, with the evidence that shows it.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What the change does. Name files, functions and behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+  - type: input
+    id: depends-on
+    attributes:
+      label: Depends on
+      description: Issues that must be closed first, e.g. "#12, diegoavilac/Cerebro#36". Leave empty if none.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable items. Each one should be provable by a test, a command or a file.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: input
+    id: validation
+    attributes:
+      label: Validation command
+      description: The command that proves the change, e.g. "uv run python scripts/check.py".
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Proposed priority
+      options: ["P0: blocks functionality or serious risk", "P1: blocks the MVP", "P2: reliability", "P3: cleanup"]
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "Approval is the `continuity:approved` label, added by Diego. Assignment is visibility, not authorization."
