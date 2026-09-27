@@ -20,9 +20,17 @@ jobs:
           ACTION: ${{ github.event.action }}
           LABEL: ${{ github.event.label.name }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SENDER: ${{ github.event.sender.login }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$ACTION" = "labeled" ] && [ "$LABEL" = "review:approved" ]; then
-            echo "review:approved applied for $HEAD_SHA"
+            # Cross review: the identity that wrote the PR cannot approve it. The owner always can.
+            if [ "$SENDER" = "$AUTHOR" ] && [ "$SENDER" != "$OWNER" ]; then
+              echo "::error::$SENDER wrote this pull request and cannot approve it. Another agent or $OWNER applies review:approved."
+              exit 1
+            fi
+            echo "review:approved applied by $SENDER for $HEAD_SHA"
             exit 0
           fi
           echo "::error::Last event was '$ACTION $LABEL', not applying review:approved. The reviewer removes and re-applies it after reviewing $HEAD_SHA."
