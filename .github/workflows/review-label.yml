@@ -1,7 +1,8 @@
 # Reusable gate: a pull request merges only with a fresh `review:approved` verdict.
 # Each repository calls it from `.github/workflows/review-label.yml`; the main-protection ruleset
-# requires the resulting check. A push (`synchronize`) always fails, because the verdict belonged
-# to the previous head: the reviewer re-applies the label after reviewing the new SHA.
+# requires the resulting check. It passes only on the event that applies `review:approved`: a push
+# or any other label change fails it, so a stale label never approves a new head. A job-level `if:`
+# cannot filter events instead, because a skipped required check counts as success.
 name: review-label
 
 on:
@@ -14,18 +15,23 @@ jobs:
     name: review-label
     runs-on: ubuntu-latest
     steps:
-      - name: Require a fresh review:approved
+      - name: Require review:approved applied to this head
         env:
           ACTION: ${{ github.event.action }}
-          APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'review:approved') }}
+          LABEL: ${{ github.event.label.name }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SENDER: ${{ github.event.sender.login }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          OWNER: ${{ github.repository_owner }}
         run: |
-          if [ "$ACTION" = "synchronize" ]; then
-            echo "::error::New commits since the last verdict. The reviewer re-applies review:approved after reviewing $HEAD_SHA."
-            exit 1
+          if [ "$ACTION" = "labeled" ] && [ "$LABEL" = "review:approved" ]; then
+            # Cross review: the identity that wrote the PR cannot approve it. The owner always can.
+            if [ "$SENDER" = "$AUTHOR" ] && [ "$SENDER" != "$OWNER" ]; then
+              echo "::error::$SENDER wrote this pull request and cannot approve it. Another agent or $OWNER applies review:approved."
+              exit 1
+            fi
+            echo "review:approved applied by $SENDER for $HEAD_SHA"
+            exit 0
           fi
-          if [ "$APPROVED" != "true" ]; then
-            echo "::error::This pull request lacks review:approved."
-            exit 1
-          fi
-          echo "review:approved present for $HEAD_SHA"
+          echo "::error::Last event was '$ACTION $LABEL', not applying review:approved. The reviewer removes and re-applies it after reviewing $HEAD_SHA."
+          exit 1
